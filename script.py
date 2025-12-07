@@ -1,14 +1,18 @@
-import requests
-from bs4 import BeautifulSoup
-import fitz  # PyMuPDF
+# -*- coding: utf-8 -*-
+import os
+import re
+import tempfile
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
-import re
-import os
-import tempfile
-from urllib.parse import urljoin
+
+import fitz  # PyMuPDF
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+import time
 
 # ---------------- Configurações ----------------
 URL_PAGINA = "https://diariooficial.prefeitura.sp.gov.br/md_epubli_controlador.php?acao=edicao_ver_ultima"
@@ -20,23 +24,30 @@ EMAIL_DESTINO = os.environ.get("EMAIL_DESTINO", EMAIL_REMETENTE)  # pode ser "em
 # ------------------------------------------------
 
 try:
-    # 1. Captura dinamicamente o link do PDF
-    print("Buscando link do PDF do dia...")
-    resp = requests.get(URL_PAGINA)
-    resp.raise_for_status()
+    # 1. Captura dinamicamente o link do PDF via Selenium
+    print("Buscando link do PDF do dia com Selenium...")
+    
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")  # roda sem abrir janela
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
-    soup = BeautifulSoup(resp.content, "html.parser")
-    link_pdf_tag = soup.find("a", {"data-format": "pdf"})
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.get(URL_PAGINA)
 
-    if not link_pdf_tag:
-        raise Exception("Não foi possível localizar o link do PDF na página.")
+    # Espera alguns segundos para o JavaScript gerar o link
+    time.sleep(5)
 
-    PDF_URL = urljoin(URL_PAGINA, link_pdf_tag["href"])
+    pdf_element = driver.find_element(By.CSS_SELECTOR, 'a[data-format="pdf"]')
+    PDF_URL = pdf_element.get_attribute("href")
+    driver.quit()
+    
     print("Link do PDF encontrado:", PDF_URL)
 
     # 2. Baixa o PDF
     download_path = os.path.join(tempfile.gettempdir(), "do_sp.pdf")
     print("Baixando PDF...")
+    import requests
     pdf_resp = requests.get(PDF_URL)
     pdf_resp.raise_for_status()
     with open(download_path, "wb") as f:
