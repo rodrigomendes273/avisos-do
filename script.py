@@ -8,6 +8,7 @@ from email.mime.application import MIMEApplication
 import re
 import os
 import tempfile
+from urllib.parse import urljoin
 
 # ---------------- Configurações ----------------
 URL_PAGINA = "https://diariooficial.prefeitura.sp.gov.br/md_epubli_controlador.php?acao=edicao_ver_ultima"
@@ -15,7 +16,7 @@ TERMO = "conservação de pavimento"
 
 EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
 EMAIL_SENHA = os.environ["EMAIL_SENHA"]
-EMAIL_DESTINO = os.environ.get("EMAIL_DESTINO", EMAIL_REMETENTE)
+EMAIL_DESTINO = os.environ.get("EMAIL_DESTINO", EMAIL_REMETENTE)  # pode ser "email1@gmail.com,email2@gmail.com"
 # ------------------------------------------------
 
 try:
@@ -30,7 +31,7 @@ try:
     if not link_pdf_tag:
         raise Exception("Não foi possível localizar o link do PDF na página.")
 
-    PDF_URL = link_pdf_tag["href"]
+    PDF_URL = urljoin(URL_PAGINA, link_pdf_tag["href"])
     print("Link do PDF encontrado:", PDF_URL)
 
     # 2. Baixa o PDF
@@ -48,7 +49,6 @@ try:
     ocorrencias = []
 
     termo_normalizado = TERMO.lower()
-    # Regex robusta para lidar com espaços e acentos
     padrao = r"\b" + r"\s+".join(map(re.escape, termo_normalizado.split())) + r"\b"
 
     for i, page in enumerate(doc, start=1):
@@ -56,7 +56,7 @@ try:
         text_normalizado = re.sub(r'\s+', ' ', text).lower()
         for match in re.finditer(padrao, text_normalizado):
             start, end = match.start(), match.end()
-            trecho = text_normalizado[max(start-30, 0):min(end+30, len(text_normalizado))]
+            trecho = text_normalizado[max(start-50, 0):min(end+50, len(text_normalizado))]
             ocorrencias.append({"pagina": i, "trecho": trecho.strip()})
 
     doc.close()
@@ -75,7 +75,7 @@ try:
     msg = MIMEMultipart()
     msg["Subject"] = "Alerta Diário Oficial SP"
     msg["From"] = EMAIL_REMETENTE
-    msg["To"] = EMAIL_DESTINO  # suporta múltiplos destinatários separados por vírgula
+    msg["To"] = EMAIL_DESTINO
 
     msg.attach(MIMEText(corpo, "plain"))
 
@@ -94,6 +94,11 @@ try:
         print("Login realizado com sucesso.")
         server.send_message(msg)
         print("E-mail enviado com sucesso!")
+
+    # 7. Remove PDF temporário
+    if os.path.exists(download_path):
+        os.remove(download_path)
+        print("PDF temporário removido.")
 
 except Exception as e:
     print(f"Ocorreu um erro: {e}")
