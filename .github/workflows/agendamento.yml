@@ -3,7 +3,7 @@ name: Alerta Diário Oficial
 # Define quando o workflow vai rodar
 on:
   schedule:
-    - cron: '0 9 * * *'  # Todo dia às 06:00 UTC
+    - cron: '0 11 * * *'  # Todo dia às 08:00 UTC
   workflow_dispatch:      # Permite rodar manualmente no GitHub
 
 jobs:
