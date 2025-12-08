@@ -2,7 +2,7 @@ name: Alerta Diário Oficial SP
 
 on:
   schedule:
-    - cron: '20 23 * * *'  # 23:20 UTC = 20:20 BRT
+    - cron: '45 23 * * *'  # 23:45 UTC = 20:45 BRT
   workflow_dispatch:
 
 jobs:
