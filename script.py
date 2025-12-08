@@ -7,10 +7,31 @@ from email.mime.application import MIMEApplication
 import re
 import os
 
-PDF_URL = "http://diariooficial.prefeitura.sp.gov.br/md_epubli_memoria_arquivo.php?xmCol9naY12X0L2xLOuAVtlZi1H4oeGNrgytAiBklLY1HKQRi8zDo8BsFlHyu_rLO2qzK577yohBWeHtouxGUA,,"
+URL = "https://diariooficial.prefeitura.sp.gov.br/md_epubli_controlador.php?acao=diario_aberto&formato=A"
+
+# ---------------- Buscar link do PDF ----------------
+try:
+    response = requests.get(URL, timeout=15)
+    response.raise_for_status()
+    html = response.text
+
+    pattern = r'<a\s+target="_blank"\s+data-format="pdf"\s+href="([^"]+)"'
+    match = re.search(pattern, html)
+
+    if match:
+        PDF_URL = match.group(1)
+
+        # Corrige link relativo
+        if PDF_URL.startswith("/"):
+            PDF_URL = "https://diariooficial.prefeitura.sp.gov.br" + PDF_URL
+    else:
+        raise Exception("Não foi possível encontrar o link do PDF.")
+
+except Exception as e:
+    raise SystemExit(f"Erro ao buscar o PDF: {e}")
 
 # ---------------- Configurações ----------------
-DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"  # caminho temporário no GitHub Actions
+DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"
 TERMO = "MRS SEGURANÇA"
 
 EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
@@ -20,14 +41,11 @@ EMAIL_DESTINO = os.environ.get("EMAIL_DESTINO", EMAIL_REMETENTE)
 
 try:
     # 1. Baixa o PDF
-    print("Baixando PDF...")
     pdf_resp = requests.get(PDF_URL)
     with open(DOWNLOAD_PDF_PATH, "wb") as f:
         f.write(pdf_resp.content)
-    print(f"PDF baixado com sucesso em: {DOWNLOAD_PDF_PATH}")
 
-    # 2. Lê o PDF e busca pelo termo
-    print("Abrindo PDF e procurando pelo termo...")
+    # 2. Lê o PDF
     doc = fitz.open(DOWNLOAD_PDF_PATH)
     ocorrencias = []
 
@@ -44,44 +62,33 @@ try:
             ocorrencias.append({"pagina": i, "trecho": trecho.strip()})
 
     doc.close()
-    print(f"Busca concluída. {len(ocorrencias)} ocorrência(s) encontrada(s).")
 
-    # 3. Monta a mensagem
+    # 3. Corpo do e-mail
     if ocorrencias:
-        corpo = f"O termo '{TERMO}' foi encontrado nas seguintes páginas:\n\n"
+        corpo = f"O termo '{TERMO}' foi encontrado:\n\n"
         for occ in ocorrencias:
             corpo += f"- Página {occ['pagina']}: ...{occ['trecho']}...\n\n"
     else:
         corpo = f"O termo '{TERMO}' não foi encontrado no PDF do Diário Oficial."
 
-    # 4. Prepara o e-mail
-    print("Preparando e-mail...")
+    # 4. Monta o e-mail
     msg = MIMEMultipart()
     msg["Subject"] = "Alerta Diário Oficial SP"
     msg["From"] = EMAIL_REMETENTE
     msg["To"] = EMAIL_DESTINO
-
     msg.attach(MIMEText(corpo, "plain"))
 
-    # Anexo PDF
+    # Anexo
     if os.path.exists(DOWNLOAD_PDF_PATH):
-        print("Anexando PDF ao e-mail...")
         with open(DOWNLOAD_PDF_PATH, "rb") as f:
             part = MIMEApplication(f.read(), Name="diario.pdf")
             part['Content-Disposition'] = 'attachment; filename="diario.pdf"'
             msg.attach(part)
 
-    # 5. Envia e-mail via Gmail
-    print("Conectando ao servidor SMTP...")
+    # 5. Envio via Gmail
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(EMAIL_REMETENTE, EMAIL_SENHA)
-        print("Login realizado com sucesso.")
         server.send_message(msg)
-        print("E-mail enviado com sucesso!")
 
 except Exception as e:
-    print(f"Ocorreu um erro: {e}")
-
-
-
-
+    raise SystemExit(f"Erro no processamento: {e}")
