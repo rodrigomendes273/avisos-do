@@ -7,24 +7,7 @@ from email.mime.application import MIMEApplication
 import re
 import os
 
-URL = "https://diariooficial.prefeitura.sp.gov.br/md_epubli_controlador.php?acao=diario_aberto&formato=A"
-
-try:
-    # Baixa o código-fonte da página
-    response = requests.get(URL, timeout=15)
-    response.raise_for_status()
-    html = response.text
-
-    # Expressão regular para capturar exatamente o que você pediu
-    pattern = r'<a\s+target="_blank"\s+data-format="pdf"\s+href="([^"]+)"'
-    match = re.search(pattern, html)
-
-    if match:
-        PDF_URL = match.group(1)
-
-    else: None
-        
-except Exception as e: None
+PDF_URL = "http://diariooficial.prefeitura.sp.gov.br/md_epubli_memoria_arquivo.php?xmCol9naY12X0L2xLOuAVtlZi1H4oeGNrgytAiBklLY1HKQRi8zDo8BsFlHyu_rLO2qzK577yohBWeHtouxGUA,,"
 
 # ---------------- Configurações ----------------
 DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"  # caminho temporário no GitHub Actions
@@ -98,6 +81,7 @@ try:
 
 except Exception as e:
     print(f"Ocorreu um erro: {e}")
+
 
 
 
