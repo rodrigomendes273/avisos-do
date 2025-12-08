@@ -21,7 +21,7 @@ else:
 
 # ---------------- Configurações ----------------
 DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"  # caminho temporário no GitHub Actions
-TERMO = "conservação de pavimento"
+TERMO = "MRS SEGURANÇA"
 
 EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
 EMAIL_SENHA = os.environ["EMAIL_SENHA"]
@@ -91,4 +91,5 @@ try:
 
 except Exception as e:
     print(f"Ocorreu um erro: {e}")
+
 
