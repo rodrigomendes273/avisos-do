@@ -32,7 +32,7 @@ except Exception as e:
 
 # ---------------- Configurações ----------------
 DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"
-TERMO = "MRS SEGURANÇA"
+TERMO = "FREMIX"
 
 EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
 EMAIL_SENHA = os.environ["EMAIL_SENHA"]
