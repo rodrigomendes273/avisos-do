@@ -1,9 +1,9 @@
 name: Alerta Diário Oficial SP
 
-# Executa todo dia às 07:00 (UTC), ajuste conforme necessidade
+# Executa o envio conforme horario programado
 on:
   schedule:
-    - cron: '50 19 * * *'  # 07:00 UTC = 04:00 BRT
+    - cron: '50 19 * * *'  # 19:50 UTC = 16:50 BRT
   workflow_dispatch:  # permite rodar manualmente também
 
 jobs:
