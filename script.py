@@ -16,17 +16,24 @@ print("Buscando página para extrair link do PDF...")
 resp = requests.get(URL_PAGINA)
 html = resp.text
 
-match = re.search(r'<a[^>]*data-format="pdf"[^>]*href="(.*?)"', html)
+# CAPTURA ROBUSTA: procura qualquer href que contenha memoria_arquivo.php
+match = re.search(r'href="(.*?memoria_arquivo\.php[^"]*)"', html)
 
 if match:
     PDF_URL = match.group(1)
+
+    # Se o link vier sem domínio, adiciona automaticamente
+    if not PDF_URL.startswith("http"):
+        PDF_URL = "https://diariooficial.prefeitura.sp.gov.br/" + PDF_URL.lstrip("/")
+
     print(f"Link do PDF encontrado:\n{PDF_URL}")
+
 else:
     raise Exception("Não foi possível encontrar o link do PDF.")
 
 # ----------------------------------------------------------------
 
-DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"  # caminho temporário no GitHub Actions
+DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"
 TERMO = "conservação de pavimento"
 
 EMAIL_REMETENTE = os.environ["EMAIL_REMETENTE"]
@@ -34,14 +41,12 @@ EMAIL_SENHA = os.environ["EMAIL_SENHA"]
 EMAIL_DESTINO = os.environ.get("EMAIL_DESTINO", EMAIL_REMETENTE)
 
 try:
-    # 1. Baixa o PDF
     print("Baixando PDF...")
     pdf_resp = requests.get(PDF_URL)
     with open(DOWNLOAD_PDF_PATH, "wb") as f:
         f.write(pdf_resp.content)
-    print(f"PDF baixado com sucesso em: {DOWNLOAD_PDF_PATH}")
+    print(f"PDF baixado com sucesso!")
 
-    # 2. Lê o PDF e busca pelo termo
     print("Abrindo PDF e procurando pelo termo...")
     doc = fitz.open(DOWNLOAD_PDF_PATH)
     ocorrencias = []
@@ -59,9 +64,7 @@ try:
             ocorrencias.append({"pagina": i, "trecho": trecho.strip()})
 
     doc.close()
-    print(f"Busca concluída. {len(ocorrencias)} ocorrência(s) encontrada(s).")
 
-    # 3. Monta a mensagem
     if ocorrencias:
         corpo = f"O termo '{TERMO}' foi encontrado nas seguintes páginas:\n\n"
         for occ in ocorrencias:
@@ -69,7 +72,6 @@ try:
     else:
         corpo = f"O termo '{TERMO}' NÃO foi encontrado no PDF do Diário Oficial."
 
-    # 4. Prepara o e-mail
     print("Preparando e-mail...")
     msg = MIMEMultipart()
     msg["Subject"] = "Alerta Diário Oficial SP"
@@ -78,21 +80,17 @@ try:
 
     msg.attach(MIMEText(corpo, "plain"))
 
-    # Anexo PDF
     if os.path.exists(DOWNLOAD_PDF_PATH):
-        print("Anexando PDF ao e-mail...")
         with open(DOWNLOAD_PDF_PATH, "rb") as f:
             part = MIMEApplication(f.read(), Name="diario.pdf")
             part['Content-Disposition'] = 'attachment; filename="diario.pdf"'
             msg.attach(part)
 
-    # 5. Envia e-mail via Gmail
-    print("Conectando ao servidor SMTP...")
+    print("Conectando ao SMTP...")
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(EMAIL_REMETENTE, EMAIL_SENHA)
-        print("Login realizado com sucesso.")
         server.send_message(msg)
         print("E-mail enviado com sucesso!")
 
 except Exception as e:
-    print(f"Ocorreu um erro: {e}")
+    print(f"ERRO: {e}")
