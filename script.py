@@ -7,17 +7,24 @@ from email.mime.application import MIMEApplication
 import re
 import os
 
-html = '''<a target="_blank" data-format="pdf" href="http://diariooficial.prefeitura.sp.gov.br/md_epubli_memoria_arquivo.php?daezB7d3kqQfnT1s83AUnCgbrrJzDQB42PY9H63cKQb9NggWQqw73BMR75FSv-NdXwIxqhndIiNCAYyDYHwWJA,," title="Faça o download da edição coforme a visualização nesta página como .pdf.">PDF</a>'''
+URL = "https://diariooficial.prefeitura.sp.gov.br/md_epubli_controlador.php?acao=diario_aberto&formato=A"
 
-match = re.search(r'href="(.*?)"', html)
+try:
+    # Baixa o código-fonte da página
+    response = requests.get(URL, timeout=15)
+    response.raise_for_status()
+    html = response.text
 
-if match:
-    PDF_URL = match.group(1)
-    print("Link encontrado:")
-    print(PDF_URL)
-else:
-    PDF_URL = None
-    print("Nenhum link encontrado.")
+    # Expressão regular para capturar exatamente o que você pediu
+    pattern = r'<a\s+target="_blank"\s+data-format="pdf"\s+href="([^"]+)"'
+    match = re.search(pattern, html)
+
+    if match:
+        PDF_URL = match.group(1)
+
+    else: None
+        
+except Exception as e: None
 
 # ---------------- Configurações ----------------
 DOWNLOAD_PDF_PATH = "/tmp/do_sp.pdf"  # caminho temporário no GitHub Actions
@@ -91,5 +98,6 @@ try:
 
 except Exception as e:
     print(f"Ocorreu um erro: {e}")
+
 
 
