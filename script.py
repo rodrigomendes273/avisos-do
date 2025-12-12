@@ -3,7 +3,6 @@ import fitz  # PyMuPDF
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
 import re
 import os
 
@@ -63,27 +62,27 @@ try:
 
     doc.close()
 
-    # 3. Corpo do e-mail
+    # 3. Corpo do e-mail (AGORA COM LINK EM HTML)
     if ocorrencias:
-        corpo = f"O termo '{TERMO}' foi encontrado:\n\n"
+        corpo = f"<p>O termo '<b>{TERMO}</b>' foi encontrado:</p>"
         for occ in ocorrencias:
-            corpo += f"- Página {occ['pagina']}: ...{occ['trecho']}...\n\n"
+            corpo += f"<p>- Página {occ['pagina']}: ...{occ['trecho']}...</p>"
     else:
-        corpo = f"O termo '{TERMO}' não foi encontrado no PDF do Diário Oficial."
+        corpo = f"<p>O termo '<b>{TERMO}</b>' não foi encontrado no PDF do Diário Oficial.</p>"
+
+    # adiciona o link
+    corpo += f'<p><a href="{PDF_URL}">Acesse o Diário Oficial aqui</a></p>'
 
     # 4. Monta o e-mail
     msg = MIMEMultipart()
     msg["Subject"] = "Alerta Diário Oficial SP"
     msg["From"] = EMAIL_REMETENTE
     msg["To"] = EMAIL_DESTINO
-    msg.attach(MIMEText(corpo, "plain"))
 
-    # Anexo
-    if os.path.exists(DOWNLOAD_PDF_PATH):
-        with open(DOWNLOAD_PDF_PATH, "rb") as f:
-            part = MIMEApplication(f.read(), Name="diario.pdf")
-            part['Content-Disposition'] = 'attachment; filename="diario.pdf"'
-            msg.attach(part)
+    # corpo em HTML (IMPORTANTE)
+    msg.attach(MIMEText(corpo, "html"))
+
+    # Remove completamente o anexo (NÃO ANEXA MAIS NADA)
 
     # 5. Envio via Gmail
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
